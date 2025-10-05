@@ -28,22 +28,22 @@ All dependencies will be installed automatically.
 pccob <- CreatePlantCellChat(object = seob,
                       meta = seob@meta.data,
                       input.ident = "celltype",
-                      assay = "SCT")
+                      assay = "SCT")  
 
 # Step 2: Extract signaling genes and identify overexpressed genes
-pccob <- ExtractSignalingData(pccob)
-pccob <- IdentifyOverExpressedGenes(pccob)
+pccob <- ExtractSignalingData(pccob)  
+pccob <- IdentifyOverExpressedGenes(pccob)  
 
 # Step 3: Detect overexpressed ligand–receptor interactions
-pccob <- ExtractOverExpressedInteractions(pccob)
-pccob <- CalculateAvgExp(pccob,methods = "average")
+pccob <- ExtractOverExpressedInteractions(pccob)  
+pccob <- CalculateAvgExp(pccob,methods = "average")  
 
 # Step 4: Compute communication strength
-pccob <- CalculateCommunStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)
-pccob <- CalculateSignalingStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)
+pccob <- CalculateCommunStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)  
+pccob <- CalculateSignalingStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)  
 # Step 5: Visualize cell–cell communication network
-PlottingLRpairStats(pccob)
-PlottingCommunNetwork(pccob,ligand.type = "lrpairs",comm.pattern = "paracrine",plot.type = "chord",input.color = color_list)
+PlottingLRpairStats(pccob)  
+PlottingCommunNetwork(pccob,ligand.type = "lrpairs",comm.pattern = "paracrine",plot.type = "chord",input.color = color_list)  
 CompareSignalCommunStrength(pcc_obj = pccob,
                             pcc_obj_list = pccob_list,
                             ligand.type = "lrpairs",
@@ -51,7 +51,7 @@ CompareSignalCommunStrength(pcc_obj = pccob,
                             key.target = "Mesophyll",
                             key.signal = "JA",
                             top.n = 10,
-                            input.color = c("#f68d8d","#88b2f2"))
+                            input.color = c("#f68d8d","#88b2f2"))  
 
 For a full tutorial, see vignettes/PlantCellChat_Tutorial.Rmd.
 
@@ -79,6 +79,6 @@ Liu W. et al. (2025). PlantCellChat: A computational framework for predicting pl
 
 📨 Contact
 
-📧 weiliu.bioinfo@outlook.com
+📧 weilau@fafu.edu.cn
 
 GitHub: Jdlutt/PlantCellChat
