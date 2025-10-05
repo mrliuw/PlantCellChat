@@ -14,9 +14,9 @@ PlantCellChat additionally incorporates a graph convolutional network (GCN) modu
 
 
 ⚙️ Installation
-# install.packages("devtools")
-library(devtools)
-install_github("Jdlutt/PlantCellChat")
+# install.packages("devtools");
+library(devtools);
+install_github("Jdlutt/PlantCellChat");
 library(PlantCellChat)
 
 
