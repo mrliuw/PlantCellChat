@@ -100,7 +100,7 @@ CalculateSpatialCommunStrength <- function(pcc_obj,Kh = 0.5, n = 1, coord, k.nei
 
   names(neighbors) <- rownames(coord)
 
-  adj_prob <- AdjustStrength(prob, coord, neighbors, n.distance = n.distance)
+  adj_prob <- AdjustCommunStrength(prob, coord, neighbors, n.distance = n.distance)
 
   df <- data.frame()
   for (i in 1:dim(adj_prob)[[3]]) {
