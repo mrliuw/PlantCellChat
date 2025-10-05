@@ -57,21 +57,21 @@ For a full tutorial, see vignettes/PlantCellChat_Tutorial.Rmd.
 
 📊 Key Functions Summary
 Function	Description
-CreatePlantCellChat()	Create analysis object
-ExtractSignalingData()	Extract signaling-related genes
-IdentifyOverExpressedGenes()	Identify differentially expressed signaling genes
-ExtractOverExpressedInteractions()	Identify active ligand–receptor pairs
-CalculateCommunStrength()	Compute CCC strength
-PlottingCommunNetwork()	Visualize cell–cell communication
-PredictHormoneReceptor()	Predict hormone receptor type via PCC-GCN
-PlottingSignalContribution()	Visualize receptor contributions in signaling pathways
+CreatePlantCellChat()	Create analysis object  
+ExtractSignalingData()	Extract signaling-related genes  
+IdentifyOverExpressedGenes()	Identify differentially expressed signaling genes  
+ExtractOverExpressedInteractions()	Identify active ligand–receptor pairs  
+CalculateCommunStrength()	Compute CCC strength  
+PlottingCommunNetwork()	Visualize cell–cell communication  
+PredictHormoneReceptor()	Predict hormone receptor type via PCC-GCN  
+PlottingSignalContribution()	Visualize receptor contributions in signaling pathways  
 🌍 Repository Structure
-PlantCellChat/
-├── R/                      # Core functions
-├── data/                   # Example model (PCC-GCN)
-├── vignettes/              # Tutorials (.Rmd)
-├── figures/                # Workflow figures
-└── README.md               # Documentation
+PlantCellChat/  
+├── R/                      # Core functions  
+├── data/                   # Example model (PCC-GCN)  
+├── vignettes/              # Tutorials (.Rmd)  
+├── figures/                # Workflow figures  
+└── README.md               # Documentation  
 
 🧠 Citation
 
