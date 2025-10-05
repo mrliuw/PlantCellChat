@@ -55,61 +55,6 @@ CompareSignalCommunStrength(pcc_obj = pccob,
 
 For a full tutorial, see vignettes/PlantCellChat_Tutorial.Rmd.
 
-🧠 PCC-GCN: Hormone Receptor Prediction Module
-🔍 Overview
-
-Many hormone receptors in plants remain uncharacterized. To address this, PlantCellChat integrates a deep learning module — PCC-GCN (PlantCellChat Graph Convolutional Network) — to predict hormone-binding receptor proteins from protein–protein interaction (PPI) networks.
-
-PCC-GCN models the topological structure of hormone-related protein networks and the biochemical properties of each protein to classify receptor functional types (e.g., ABA, BR, GA receptors).
-
-⚙️ Model Architecture
-
-Input layer:
-A graph of 684 hormone-related proteins (nodes) and 2,580 interactions (edges) derived from Arabidopsis thaliana.
-Each protein node embeds 31 biochemical and structural features, including amino acid composition, isoelectric point, aliphatic index, and secondary structure ratios.
-
-Hidden layer:
-A single GCN layer (16 neurons) with LeakyReLU activation is used to aggregate neighboring node features, weighted by TM-score and STRING-score.
-
-Output layer:
-A multi-label sigmoid classifier returns the probability that a given protein belongs to one or more hormone receptor classes (ABA, BR, CTK, ET, GA, IAA, JA, SA).
-
-🧩 Input Data
-
-You can provide your own PPI network and node features, or use the built-in Arabidopsis model:
-
-# Load built-in PCC-GCN model
-data("PCC_GCN_model")
-
-# Optional: visualize graph structure
-PlotPCCNetwork(PCC_GCN_model)
-
-🧪 Predicting Hormone Receptors
-# Predict receptor classes for a new protein set
-pred_results <- PredictHormoneReceptor(PCC_GCN_model, protein_features)
-
-# View top predicted receptors
-head(pred_results)
-
-
-Output Example:
-
-Protein_ID	ABA	BR	CTK	ET	GA	IAA	JA	SA
-AT1G12340	0.91	0.04	0.02	0.01	0.09	0.03	0.02	0.05
-AT3G56780	0.05	0.88	0.11	0.03	0.02	0.09	0.07	0.01
-
-Each column represents the probability of binding to a specific hormone signal.
-
-🧾 Interpretation
-
-Probability > 0.8 indicates strong evidence of functional association with that hormone receptor class.
-
-Predictions can guide receptor candidate validation in non-model plants.
-
-Model performance (10-fold CV on Arabidopsis):
-
-AUC: 0.96 AUCPR: 0.91 MCC: 0.82
-
 📊 Key Functions Summary
 Function	Description
 CreatePlantCellChat()	Create analysis object
