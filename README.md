@@ -23,24 +23,35 @@ library(PlantCellChat)
 All dependencies will be installed automatically.
 
 🚀 Quick Start Example
-library(PlantCellChat)
 
 # Step 1: Create analysis object
-pcc_obj <- CreatePlantCellChat(data = expr_matrix, cell_info = cell_annotations)
+pccob <- CreatePlantCellChat(object = seob,
+                      meta = seob@meta.data,
+                      input.ident = "celltype",
+                      assay = "SCT")
 
 # Step 2: Extract signaling genes and identify overexpressed genes
-pcc_obj <- ExtractSignalingData(pcc_obj)
-pcc_obj <- IdentifyOverExpressedGenes(pcc_obj)
+pccob <- ExtractSignalingData(pccob)
+pccob <- IdentifyOverExpressedGenes(pccob)
 
 # Step 3: Detect overexpressed ligand–receptor interactions
-pcc_obj <- ExtractOverExpressedInteractions(pcc_obj)
+pccob <- ExtractOverExpressedInteractions(pccob)
+pccob <- CalculateAvgExp(pccob,methods = "average")
 
 # Step 4: Compute communication strength
-pcc_obj <- CalculateCommunStrength(pcc_obj)
-
+pccob <- CalculateCommunStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)
+pccob <- CalculateSignalingStrength(pccob,Kh = 0.5,n = 1,num.permutations = 100,seed = 123)
 # Step 5: Visualize cell–cell communication network
-PlottingCommunNetwork(pcc_obj)
-
+PlottingLRpairStats(pccob)
+PlottingCommunNetwork(pccob,ligand.type = "lrpairs",comm.pattern = "paracrine",plot.type = "chord",input.color = color_list)
+CompareSignalCommunStrength(pcc_obj = pccob,
+                            pcc_obj_list = pccob_list,
+                            ligand.type = "lrpairs",
+                            key.source = "Leaf guard cell",
+                            key.target = "Mesophyll",
+                            key.signal = "JA",
+                            top.n = 10,
+                            input.color = c("#f68d8d","#88b2f2"))
 
 For a full tutorial, see vignettes/PlantCellChat_Tutorial.Rmd.
 
@@ -98,16 +109,6 @@ Predictions can guide receptor candidate validation in non-model plants.
 Model performance (10-fold CV on Arabidopsis):
 
 AUC: 0.96 AUCPR: 0.91 MCC: 0.82
-
-🔄 Transfer to Other Species
-
-You can adapt PCC-GCN to new plant species using ortholog mapping:
-
-# Example: transfer model to rice homologs
-rice_pred <- PredictHormoneReceptor_Orthologs(PCC_GCN_model, rice_ppi, rice_features)
-
-
-This enables cross-species inference of hormone receptors based on conserved molecular topology.
 
 📊 Key Functions Summary
 Function	Description
