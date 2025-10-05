@@ -1,1 +1,158 @@
+---
+title: "Spatial transcriptomics analysis of Arabidopsis leaf (STDS0000104)"
+output: github_document
+---
 
+# Load required packages
+```{r}
+library(Seurat)
+library(SeuratObject)
+library(SeuratDisk)
+library(ggplot2)
+library(tidyverse)
+library(PlantCellChat)
+library(readxl)
+Load spatial transcriptomics data
+Dataset source:
+https://db.cngb.org/stomics/datasets/STDS0000104
+This dataset contains 26 spatial transcriptomic samples of Arabidopsis thaliana leaves.
+
+Convert .h5ad files into .h5seurat format using SeuratDisk:
+
+{r}
+
+samples <- list.files("./STDS0000104/", recursive = TRUE)
+
+for (sample in samples) {
+  Convert(str_c("./STDS0000104/", sample), dest = "h5seurat", overwrite = TRUE)
+}
+Load all .h5seurat objects into a list:
+
+{r}
+
+seob_list <- list()
+samples <- list.files("./STDS0000104/", pattern = "\\.h5seurat$")
+
+for (sample in samples) {
+  seob <- LoadH5Seurat(str_c("./STDS0000104/", sample))
+  seob[['Samples']] <- sample
+  seob_list[[sample]] <- seob
+}
+Visualize spatial cell distribution (sample S1-2)
+Use one representative sample S1-2_stereoseq.h5seurat for downstream analysis.
+
+{r}
+
+library(ggrepel)
+library(Seurat)
+library(tidyverse)
+
+spatial <- seob_list[["S1-2_stereoseq.h5seurat"]]@reductions[["spatial"]]@cell.embeddings %>% 
+  as.data.frame() %>% 
+  cbind(celltype = seob_list[[2]]@meta.data$cell_type) %>% 
+  dplyr::mutate(celltype = gsub("_", " ", celltype))
+
+ggplot(spatial, aes(x = spatial_1, y = spatial_2, color = celltype)) +  
+  geom_point(size = 1.4, alpha = 1, shape = 19) +  
+  scale_color_manual(values = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2')) +
+  theme(panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.border = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_rect(fill = 'white'),
+        plot.background = element_rect(fill = "white")) +
+  theme(legend.title = element_blank(), 
+        legend.key = element_rect(fill = 'white'), 
+        legend.text = element_text(size = 20),
+        legend.key.size = unit(1, 'cm')) +
+  guides(color = guide_legend(override.aes = list(size = 5)))
+
+ggsave("figure/spatial_dotplot.pdf", width = 6, height = 8)
+Create PlantCellChat object for spatial analysis
+{r}
+
+seob <- seob_list[["S1-2_stereoseq.h5seurat"]]
+
+# Normalize with SCTransform
+seob <- SCTransform(seob,
+                    variable.features.n = 3000,
+                    verbose = FALSE)
+
+# Create PlantCellChat object with spatial coordinates
+pccob <- CreatePlantCellChat(object = seob,
+                             meta = seob@meta.data,
+                             assay = "SCT",
+                             input.ident = "cell_type",
+                             spatial.coord = seob@reductions$spatial@cell.embeddings)
+
+# Load Arabidopsis ligand–receptor interaction database
+pccob@database$interaction <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/ath/interaction.xlsx", sheet = 1) %>% as.data.frame()
+pccob@database$genelist <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/ath/interaction.xlsx", sheet = 2)
+
+# Perform signaling extraction and communication calculation
+pccob <- ExtractSignalingData(pccob)
+pccob <- IdentifyOverExpressedGenes(pccob)
+pccob <- ExtractOverExpressedInteractions(pccob)
+pccob <- CalculateAvgExp(pccob, methods = "average")
+pccob <- CalculateCommunStrength(pccob)
+pccob <- CalculateSignalingStrength(pccob)
+pccob <- CalculateSpatialCommunStrength(pccob, Kh = 0.5, n = 1, k.neighbors = 5, n.distance = 10)
+Spatial communication visualization
+Visualize spatial communication networks using different styles: network plot, bar plot, and circle plot.
+
+{r}
+
+library(circlize)
+library(igraph)
+
+# Global spatial communication (all signaling)
+pdf("figure/spatial_communication.pdf", width = 8, height = 8)
+PlottingSpatialCommunNetwork(pccob, input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3)
+dev.off()
+
+pdf("figure/spatial_communication_barplot.pdf", width = 6, height = 2.8)
+PlottingSpatialCommunNetwork(pccob, input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3, plot.type = "barplot")
+dev.off()
+
+pdf("figure/spatial_communication_circle.pdf", width = 8, height = 8)
+PlottingSpatialCommunNetwork(pccob, input.gradient = c("#98c1de","#cd8dbe"),
+                             top.n = 10, fig.ratio = 3, plot.type = "circle")
+dev.off()
+ABA signaling-mediated spatial communication
+{r}
+
+pdf("figure/ABA_communication.pdf", width = 8, height = 8)
+PlottingSpatialCommunNetwork(pccob, key.signal = "ABA",
+                             input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3, edge.size = 4)
+dev.off()
+
+pdf("figure/ABA_communication_barplot.pdf", width = 5, height = 2.8)
+PlottingSpatialCommunNetwork(pccob, key.signal = "ABA",
+                             input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3, plot.type = "barplot")
+dev.off()
+
+pdf("figure/ABA_communication_circle.pdf", width = 8, height = 8)
+PlottingSpatialCommunNetwork(pccob, key.signal = "ABA",
+                             input.gradient = c("#ffdfc3","#ff871e"),
+                             top.n = 10, fig.ratio = 3, plot.type = "circle")
+dev.off()
+Example: specific ligand–receptor pair communication (AT1G12220–AT5G46330)
+{r}
+
+pdf("figure/AT1G12220_AT5G46330_communication.pdf", width = 8, height = 8)
+PlottingSpatialCommunNetwork(pccob, key.lrpairs = "AT1G12220_AT5G46330",
+                             input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3)
+dev.off()
+
+pdf("figure/AT1G12220_AT5G46330_communication_barplot.pdf", width = 5.8, height = 2.8)
+PlottingSpatialCommunNetwork(pccob, key.lrpairs = "AT1G12220_AT5G46330",
+                             input.color = c('#ff800f','#d62728','#66c1a7','#c67db5','#3183bd','#fcd1a2'),
+                             top.n = 10, fig.ratio = 3, plot.type = "barplot")
+dev.off()
