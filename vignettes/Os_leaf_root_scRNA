@@ -1,1 +1,220 @@
+---
+title: "Salt stress response analysis in rice (root & leaf)"
+output: github_document
+---
 
+# Load required packages
+```{r}
+# .libPaths(c("D:/sofware/R-4.3.3/.libpath/SeuratV4/", .libPaths()))
+library(Seurat)
+library(SeuratDisk)
+library(tidyverse)
+library(Augur)
+library(ggplot2)
+library(scales)
+Load and preprocess data
+Dataset description:
+Rice (Oryza sativa) root and leaf scRNA-seq dataset containing 8 samples, divided into Ctrl (control) and HS (salt stress) groups, with four biological replicates per group.
+Data source: https://biobigdata.nju.edu.cn/scplantdb/dataset
+
+{r}
+
+seob_temp <- LoadH5Seurat("/raid1/cellchat/plantcellchat_data/scRNA/Os_root&leaf/CRA004082.h5seurat")
+
+seob_list_temp <- SplitObject(seob_temp, split.by = "Orig.ident")
+
+seob_list <- list()
+seob_list[["Ctrl-rep1"]] <- seob_list_temp[["CRX235968"]]
+seob_list[["HS-rep1"]]   <- seob_list_temp[["CRX235970"]]
+seob_list[["Ctrl-rep2"]] <- seob_list_temp[["CRX235972"]]
+seob_list[["HS-rep2"]]   <- seob_list_temp[["CRX235974"]]
+seob_list[["Ctrl-rep3"]] <- seob_list_temp[["CRX235976"]]
+seob_list[["HS-rep3"]]   <- seob_list_temp[["CRX235978"]]
+seob_list[["Ctrl-rep4"]] <- seob_list_temp[["CRX235980"]]
+seob_list[["HS-rep4"]]   <- seob_list_temp[["CRX235982"]]
+
+rm(seob_temp, seob_list_temp)
+
+seob <- merge(x = seob_list[[1]], y = seob_list[-1])
+
+# Assign group and sample metadata
+seob@meta.data <- seob@meta.data %>% 
+  select(1,2,3,4) %>% 
+  mutate(Group = case_when(
+    Orig.ident %in% c("CRX235968","CRX235972","CRX235976","CRX235980") ~ "Ctrl",
+    TRUE ~ "HS"
+  )) %>% 
+  mutate(Sample = recode(Orig.ident,
+    "CRX235968" = "Ctrl-rep1", "CRX235970" = "HS-rep1",
+    "CRX235972" = "Ctrl-rep2", "CRX235974" = "HS-rep2",
+    "CRX235976" = "Ctrl-rep3", "CRX235978" = "HS-rep3",
+    "CRX235980" = "Ctrl-rep4", "CRX235982" = "HS-rep4"))
+
+seob@project.name <- "SeuratProject"
+seob <- SetIdent(seob, value = "Group")
+
+seob_list <- SplitObject(seob, split.by = "Sample")
+SCTransform normalization and integration
+Note: Fix the Seurat 5 compatibility issue (“could not find function .GetSeuratCompat”)
+Reference: https://github.com/satijalab/seurat/issues/7989
+
+{r}
+
+for (i in 1:length(seob_list)) {
+  seob_list[[i]] <- UpdateSeuratObject(seob_list[[i]])
+  seob_list[[i]] <- SCTransform(seob_list[[i]],
+                                variable.features.n = 3000,
+                                verbose = FALSE)
+}
+
+features <- SelectIntegrationFeatures(object.list = seob_list, nfeatures = 3000)
+
+seob_list <- PrepSCTIntegration(object.list = seob_list, anchor.features = features)
+
+anchors <- FindIntegrationAnchors(object.list = seob_list,
+                                  normalization.method = "SCT",
+                                  anchor.features = features)
+
+seob <- IntegrateData(anchorset = anchors, normalization.method = "SCT")
+Dimensional reduction and clustering
+{r}
+
+seob <- RunPCA(seob, features = features, verbose = FALSE)
+ElbowPlot(seob, ndims = 50)
+
+seob <- RunUMAP(seob, dims = 1:50)
+
+# Visualize batch effect
+DimPlot(seob, reduction = "umap", group.by = "Group", label = FALSE)
+
+# Clustering
+seob <- FindNeighbors(seob, dims = 1:50)
+seob <- FindClusters(seob, resolution = 0.4, random.seed = 306)
+
+DimPlot(seob, reduction = "umap", group.by = "seurat_clusters", label = TRUE)
+Cell type annotation
+{r}
+
+celltype <- c("0" = "Mesophyll",
+              "1" = "Leaf Vascular",
+              "2" = "Unknown",
+              "3" = "Epidermis",
+              "4" = "Mesophyll",
+              "5" = "Unknown",
+              "6" = "Unknown",
+              "7" = "Meristem",
+              "8" = "Root Stele",
+              "9" = "Epidermis",
+              "10" = "Root Phloem",
+              "11" = "Cortex",
+              "12" = "Guard Cell",
+              "13" = "Procambium",
+              "14" = "Mestome Sheath",
+              "15" = "Root Xylem")
+
+seob[["celltype"]] <- unname(celltype[seob@meta.data$seurat_clusters])
+UMAP visualization by cell type and treatment
+{r}
+
+# By cell type
+umap <- seob@reductions$umap@cell.embeddings %>% 
+  as.data.frame() %>% 
+  cbind(celltype = seob@meta.data$celltype)
+
+ggplot(umap, aes(x=UMAP_1, y=UMAP_2, color=celltype)) +
+  geom_point(size = 0.1, alpha = 1) +
+  scale_color_manual(values = c('#ffed6f', '#1f7ab4', '#fdcde6', '#cdecc6', '#fd8d3c', 
+                                '#66c1a7', '#e4191c','#a6cee5', '#bc80bd', '#a55628', 
+                                '#fcd1a2', 'grey60')) +
+  theme_void() +
+  guides(color = guide_legend(override.aes = list(size=5))) +
+  theme(legend.title = element_blank(), legend.text = element_text(size=20))
+ggsave("figures/celltype_umap_dotplot.pdf", width = 9.6, height = 6.6)
+{r}
+
+# By treatment group
+umap <- seob@reductions$umap@cell.embeddings %>% 
+  as.data.frame() %>% 
+  cbind(group = seob@meta.data$Group)
+
+ggplot(umap, aes(x=UMAP_1, y=UMAP_2, color=group)) +
+  geom_point(size = 0.1, alpha = 1) +
+  scale_color_manual(values = c("#EF4968","#6C7BBB")) +
+  theme_void() +
+  theme(legend.title = element_blank(), legend.text = element_text(size=20))
+ggsave("figures/treatment_umap_dotplot.pdf", width = 8, height = 6.6)
+Identify cell types most responsive to salt stress
+{r}
+
+augur <- Augur::calculate_auc(input = seob,
+                              meta = seob@meta.data,
+                              label_col = "Group",
+                              cell_type_col = "celltype")
+
+data <- augur$AUC %>%
+  arrange(auc) %>%
+  mutate(cell_type = factor(cell_type, levels = cell_type))
+
+ggplot(data, aes(x = cell_type, y = auc, fill = cell_type)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values = c('#fd8d3c','grey60','#66c1a7','#1f7ab4','#a55628',
+                               '#cdecc6','#ffed6f','#fdcde6','#fcd1a2','#a6cee5',
+                               '#bc80bd','#e4191c')) +
+  theme_minimal() +
+  theme(legend.position = "none")
+ggsave("figures/augur_circleplot.pdf", width = 5, height = 5)
+Cell–cell communication analysis using PlantCellChat
+{r}
+
+seob_list <- SplitObject(seob, split.by = "Group")
+pccob_list <- list()
+
+for (i in 1:length(seob_list)) {
+  pccob <- CreatePlantCellChat(object = seob_list[[i]],
+                               meta = seob_list[[i]]@meta.data,
+                               input.ident = "celltype",
+                               assay = "SCT")
+
+  library(readxl)
+  pccob@database$interaction <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/osa/interaction.xlsx", sheet = 1) %>% as.data.frame()
+  pccob@database$genelist <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/osa/interaction.xlsx", sheet = 2)
+
+  pccob <- ExtractSignalingData(pccob)
+  pccob <- IdentifyOverExpressedGenes(pccob)
+  pccob <- ExtractOverExpressedInteractions(pccob)
+  pccob <- CalculateAvgExp(pccob, methods = "average")
+  pccob <- CalculateCommunStrength(pccob, Kh = 0.5, n = 1, num.permutations = 100, seed = 123)
+  pccob <- CalculateSignalingStrength(pccob, Kh = 0.5, n = 1, num.permutations = 100, seed = 123)
+  
+  pccob_list[[names(seob_list)[i]]] <- pccob
+}
+ABA and GA signaling networks in Mestome Sheath cells
+{r}
+
+color_list <- c('#ffed6f', '#1f7ab4', '#fdcde6', '#cdecc6', '#fd8d3c', 
+                '#66c1a7', '#e4191c','#a6cee5', '#bc80bd', '#a55628', 
+                '#fcd1a2', 'grey60')
+
+pdf("figures/ABA_MS_ctrl_network.pdf",width = 8.5,height = 4.5)
+PlottingCommunNetwork(pccob_list[["Ctrl"]], ligand.type = "lrpairs", comm.pattern = "paracrine",
+                      key.signal = "ABA", key.cluster = "Mestome Sheath", input.color = color_list)
+dev.off()
+
+pdf("figures/ABA_MS_HS_network.pdf",width = 8.5,height = 4.5)
+PlottingCommunNetwork(pccob_list[["HS"]], ligand.type = "lrpairs", comm.pattern = "paracrine",
+                      key.signal = "ABA", key.cluster = "Mestome Sheath", input.color = color_list)
+dev.off()
+Compare ABA and GA signaling strength changes under stress
+{r}
+
+pdf("figures/compare_ABA_ms_contri_barplot.pdf",width = 5.6,height = 3)
+CompareSignalCommunStrength(pcc_obj = pccob,
+                            pcc_obj_list = pccob_list,
+                            ligand.type = "lrpairs",
+                            key.source = "Mestome Sheath",
+                            key.signal = "ABA",
+                            top.n = 10,
+                            input.color = c("#FF1818","#F5C1C1"),
+                            scale.factor = 4)
+dev.off()
