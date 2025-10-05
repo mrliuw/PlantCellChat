@@ -1,1 +1,253 @@
+---
+title: "PlantCellChat demo - Arabidopsis leaf scRNA-seq analysis"
+output: github_document
+---
+
+# Load required packages
+
+```{r}
+# .libPaths(c("D:/sofware/R-4.3.3/.libpath/SeuratV4/", .libPaths()))
+library(Seurat)
+library(SeuratDisk)
+library(tidyverse)
+library(PlantCellChat)
+library(ggrepel)
+Data loading and preprocessing
+Dataset 2: Arabidopsis leaf single-cell RNA-seq dataset, including two samples (mock and P. syringae-infected leaves), each with one biological replicate.
+Source: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE213622
+
+{r}
+
+seob_list <- list()
+samples = basename(list.dirs("/raid1/cellchat/plantcellchat_data/scRNA/At_leaf/", recursive = FALSE))
+
+for (sample in samples) {
+  file = str_c("/raid1/cellchat/plantcellchat_data/scRNA/At_leaf/", sample)
+  scdata <- Read10X(data.dir = file)
+  seob <- CreateSeuratObject(counts = scdata,
+                             min.cells = 3,
+                             min.features = 200)
+  seob[['Sample']] = sample
+  seob_list[[sample]] <- seob
+}
+
+seob <- merge(x = seob_list[[1]],
+              y = seob_list[-1],
+              add.cell.ids = names(seob_list))
+
+# Calculate the percentage of mitochondrial genes
+mt_genes <- str_subset(rownames(seob), "ATMG")
+
+seob[["Percent.mt"]] <- PercentageFeatureSet(
+  seob,
+  features = mt_genes
+)
+
+# Check QC metrics
+is_ggplot = ggplot2::is.ggplot
+is_theme = ggplot2::is.theme
+VlnPlot(seob, 
+        features = c("nFeature_RNA", "nCount_RNA", "Percent.mt"), 
+        group.by = "Sample",
+        pt.size = 0.1)
+
+FeatureScatter(seob, 
+               feature1 = "nCount_RNA", 
+               feature2 = "nFeature_RNA",
+               group.by = "Sample")
+
+FeatureScatter(seob, 
+               feature1 = "nCount_RNA", 
+               feature2 = "Percent.mt",
+               group.by = "Sample")
+
+# Visualize feature/mitochondrial ratios for QC
+data.frame(
+  nCount_RNA = seob[["nCount_RNA"]],
+  percent.mt = seob[["Percent.mt"]]) %>% 
+  ggplot(aes(x = Percent.mt, y = nCount_RNA)) +
+  geom_col(width = 0.05) +
+  ylim(0,70000)
+
+data.frame(
+  nCount_RNA = seob[["nCount_RNA"]],
+  nFeature_RNA = seob[["nFeature_RNA"]]) %>% 
+  ggplot(aes(x = nFeature_RNA, y = nCount_RNA)) +
+  geom_col(width = 1) +
+  geom_vline(xintercept = 6120, color = "red") + 
+  geom_vline(xintercept = 375, color = "red") + 
+  ylim(0,70000) +
+  xlim(0,7500)
+
+# Filter cells with feature count outside the range [375, 6120] and mt% > 10
+seob <- subset(seob, subset = nFeature_RNA > 375 & nFeature_RNA < 6120 & Percent.mt < 10)
+SCTransform normalization and integration
+{r}
+
+for (i in 1:length(seob_list)){
+  seob_list[[i]] <- SCTransform(seob_list[[i]],
+                                variable.features.n = 3000,
+                                verbose = FALSE)
+}
+
+features <- SelectIntegrationFeatures(object.list = seob_list,
+                                      nfeatures = 3000)
+
+seob_list <- PrepSCTIntegration(
+  object.list = seob_list,
+  anchor.features = features
+)
+
+anchors <- FindIntegrationAnchors(
+  object.list = seob_list,
+  normalization.method = "SCT",
+  anchor.features = features
+)
+
+seob <- IntegrateData(
+  anchorset = anchors,
+  normalization.method = "SCT"
+)
+Dimensionality reduction
+{r}
+
+seob <- RunPCA(seob,
+               features = features,
+               verbose = FALSE)
+ElbowPlot(seob, ndims = 50)
+
+seob <- RunUMAP(seob, dims = 1:50)
+
+DimPlot(seob,
+        reduction = "umap",
+        group.by = "Sample",
+        label = FALSE)
+Cell clustering
+{r}
+
+DefaultAssay(seob) <- "integrated"
+
+seob <- FindNeighbors(seob, dims = 1:50)
+seob <- FindClusters(seob, resolution = 0.5, random.seed = 306)
+
+DimPlot(seob,
+        reduction = "umap",
+        group.by = "seurat_clusters",
+        label = TRUE)
+Cell type annotation
+{r}
+
+# Mesophyll markers
+DotPlot(seob, features = c("AT1G23310"), assay = "SCT")
+
+# Phloem parenchyma markers
+DotPlot(seob, features = c("AT2G22330"), assay = "SCT")
+
+# Companion cell markers
+DotPlot(seob, features = c("AT1G22710"), assay = "SCT")
+
+# Guard cell markers
+DotPlot(seob, features = c("AT5G48485"), assay = "SCT")
+
+# Xylem markers
+DotPlot(seob, features = c("AT3G18560"), assay = "SCT")
+
+# Assign cell types
+celltype <- c("0" = "Mesophyll",
+              "1" = "Mesophyll",
+              "2" = "Mesophyll",
+              "3" = "Mesophyll",
+              "4" = "Mesophyll",
+              "5" = "Mesophyll",
+              "6" = "Mesophyll",
+              "7" = "Mesophyll",
+              "8" = "Phloem parenchyma",
+              "9" = "Mesophyll",
+              "10" = "Mesophyll",
+              "11" = "Xylem",
+              "12" = "Companion cell",
+              "13" = "Leaf guard cell",
+              "14" = "Mesophyll",
+              "15" = "Mesophyll"
+              )
+
+seob[["celltype"]] <- unname(celltype[seob@meta.data$seurat_clusters])
+Visualization of cell clusters and annotations
+{r}
+
+DimPlot(seob,
+        reduction = "umap",
+        group.by = "celltype",
+        label = TRUE)
+Cell–cell communication analysis using PlantCellChat
+{r}
+
+pccob <- CreatePlantCellChat(object = seob,
+                      meta = seob@meta.data,
+                      input.ident = "celltype",
+                      assay = "SCT")
+
+# Load ligand–receptor database
+library(readxl)
+pccob@database$interaction <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/ath/interaction.xlsx", sheet = 1) %>%
+  as.data.frame()
+pccob@database$genelist <- read_excel("/raid1/cellchat/plantcellchat_data/interaction/ath/interaction.xlsx", sheet = 2)
+
+# Extract signaling gene expression data
+pccob <- ExtractSignalingData(pccob)
+
+# Identify differentially expressed genes
+pccob <- IdentifyOverExpressedGenes(pccob)
+
+# Extract differentially expressed ligand–receptor pairs
+pccob <- ExtractOverExpressedInteractions(pccob)
+
+# Compute average expression across cell groups
+pccob <- CalculateAvgExp(pccob, methods = "average")
+
+# Calculate intercellular communication probability
+pccob <- CalculateCommunStrength(pccob, Kh = 0.5, n = 1, num.permutations = 100, seed = 123)
+
+# Calculate communication strength mediated by exogenous signaling molecules
+pccob <- CalculateSignalingStrength(pccob, Kh = 0.5, n = 1, num.permutations = 100, seed = 123)
+Visualization of cell communication networks
+{r}
+
+color_list <- c("#b1b5f6","#f6b1c0","#7999bd","#f3a354","#78b271")
+
+pdf("figures/At_leaf/paracrine_network.pdf", width = 6, height = 4)
+PlottingCommunNetwork(pccob, ligand.type = "lrpairs", comm.pattern = "paracrine", plot.type = "chord", input.color = color_list)
+dev.off()
+
+pdf("figures/At_leaf/autocrine_network.pdf", width = 6, height = 4)
+PlottingCommunNetwork(pccob, ligand.type = "lrpairs", comm.pattern = "autocrine", plot.type = "chord", input.color = color_list)
+dev.off()
+Changes in JA-mediated signaling before and after infection
+{r}
+
+pdf("figures/At_leaf/JA_mock_network.pdf", width = 8, height = 4)
+PlottingCommunNetwork(pccob_list[[1]], ligand.type = "lrpairs", comm.pattern = "paracrine", key.signal = "JA", plot.type = "circle", input.color = color_list, normalize = FALSE, edge.size = 50)
+dev.off()
+
+pdf("figures/At_leaf/JA_psyringae_network.pdf", width = 8, height = 4)
+PlottingCommunNetwork(pccob_list[[2]], ligand.type = "lrpairs", comm.pattern = "paracrine", key.signal = "JA", plot.type = "circle", input.color = color_list, normalize = FALSE, edge.size = 50)
+dev.off()
+Contribution of ligand–receptor pairs under JA signaling
+{r}
+
+PlottingSignalContribution(pccob_list[[1]], ligand.type = "lrpairs", key.signal = "JA", key.source = "Leaf guard cell", key.target = "Mesophyll", coord.flip = TRUE)
+ggsave("figures/At_leaf/JA_lgc2mes_contri_barplot.pdf", width = 3, height = 4.5)
+Comparison of JA-mediated communication strength before and after stress
+{r}
+
+pdf("figures/At_leaf/compare_JA_lgc2mes_contri_barplot.pdf", width = 4, height = 4.2)
+CompareSignalCommunStrength(pcc_obj = pccob,
+                            pcc_obj_list = pccob_list,
+                            ligand.type = "lrpairs",
+                            key.source = "Leaf guard cell",
+                            key.target = "Mesophyll",
+                            key.signal = "JA",
+                            top.n = 10,
+                            input.color = c("#f68d8d","#88b2f2"))
+dev.off()
 
