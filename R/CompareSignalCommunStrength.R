@@ -136,8 +136,7 @@ CompareSignalCommunStrength <- function(pcc_obj,
           plot.title = element_text(hjust = 0.5,size = title.cex)
         ) +
         coord_flip() +  
-        scale_y_continuous(expand = expansion(mult = c(0, 0.05)),name = "Communication Probability") 
-        scale_fill_manual(
+          scale_fill_manual(
           values = setNames(c(input.color %||% default_colors)[1:length(pcc_obj_list)], names(pcc_obj_list)),
           labels = setNames(
             c(sapply(names(pcc_obj_list), function(name) paste(name, "")),
@@ -218,20 +217,21 @@ combined_df_filter %>%
   coord_flip() +
   labs(
     title = if (show.title) paste(key.signal, "related LR-pairs") else NULL,
-    x = "tst",
+    x = "LR-pair#cofactor",
     y = "Communication strength"
   ) +
   theme_bw() +
   theme(
-    axis.text.y = element_text(size = label.cex, color = "black"),
-    axis.text.x = element_text(size = label.cex * 1.1, color = "black"),  # 调大x轴字体
-    axis.title.y = element_blank(),
+    axis.text.y = element_text(size = label.cex*0.9, color = "black"),
+    axis.text.x = element_text(size = label.cex , color = "black"),  # 调大x轴字体
+    axis.title.y = element_text(size = title.cex, face = "bold", color = "black"),
     axis.title.x = element_text(size = title.cex, face = "bold", color = "black", vjust = 1.5),
     axis.ticks.x = element_line(color = "black"),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
     plot.title = element_text(hjust = 0.5, size = title.cex + 1, face = "bold")
   ) +
+      scale_y_continuous(labels = function(x) abs(x),expand = expansion(mult = c(0, 0.05)),name = "Contribution / Communication Probability") +
   scale_fill_manual(
     values = setNames(c(input.color %||% default_colors)[1:length(pcc_obj_list)], names(pcc_obj_list)),
     labels = setNames(
