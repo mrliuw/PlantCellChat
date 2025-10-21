@@ -84,7 +84,7 @@ PlottingSignalContribution <- function(pcc_obj,
           theme_bw() +
           theme(
             axis.text.y = element_text(size = label.cex, color = "black"),
-            axis.text.x = element_blank(),
+            axis.text.x = element_text(size = label.cex *1.1, color = "black"),
             axis.title.x = element_text(size = label.cex, color = "black"),
             axis.ticks.x = element_blank(),
             panel.grid.major = element_blank(),
@@ -106,7 +106,7 @@ PlottingSignalContribution <- function(pcc_obj,
           ) +
           theme_bw() +
           theme(
-            axis.text.y = element_blank(),
+            axis.text.y =element_text(size = label.cex * 1.1, color = "black"),
             axis.text.x = element_text(angle = 75, hjust = 1, size = label.cex, color = "black"),
             axis.title.y = element_text(size = label.cex, color = "black"),
             axis.ticks.y = element_blank(),
@@ -164,7 +164,7 @@ PlottingSignalContribution <- function(pcc_obj,
           theme_bw() +
           theme(
             axis.text.y = element_text(size = label.cex, color = "black"),
-            axis.text.x = element_blank(),
+            axis.text.x = element_text(size = label.cex * 1.1, color = "black"),
             axis.title.x = element_text(size = label.cex, color = "black"),
             axis.ticks.x = element_blank(),
             panel.grid.major = element_blank(),
@@ -183,7 +183,7 @@ PlottingSignalContribution <- function(pcc_obj,
                title = if (show.title) paste("Contribution of receptors to", key.signal) else NULL) +
           theme_bw() +
           theme(
-            axis.text.y = element_blank(),
+            axis.text.y = element_text(size = label.cex * 1.1, color = "black"),
             axis.text.x = element_text(angle = 80, hjust = 1, size = label.cex, color = "black"),
             axis.title.y = element_text(size = label.cex, color = "black"),
             axis.ticks.y = element_blank(),
