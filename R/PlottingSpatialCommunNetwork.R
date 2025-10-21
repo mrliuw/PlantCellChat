@@ -48,7 +48,7 @@ PlottingSpatialCommunNetwork <- function(pcc_obj,
                                          show.title = T,
                                          coord.flip = F) {
   coord <- pcc_obj@spatial$cell.embeddings
-  celltype <- levels(PccIdents(pccob))
+  celltype <- levels(PccIdents(pcc_obj))
 
   info <- data.frame(
     Cell = rownames(coord),
