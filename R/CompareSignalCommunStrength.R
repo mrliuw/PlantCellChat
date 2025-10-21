@@ -231,7 +231,7 @@ combined_df_filter %>%
     panel.grid.minor = element_blank(),
     plot.title = element_text(hjust = 0.5, size = title.cex + 1, face = "bold")
   ) +
-      scale_y_continuous(labels = function(x) abs(x),expand = expansion(mult = c(0, 0.05)),name = "Contribution / Communication Probability") +
+      scale_y_continuous(labels = function(x) abs(x),expand = expansion(mult = c(0, 0.05)),name = "Contribution / Communication Strength") +
   scale_fill_manual(
     values = setNames(c(input.color %||% default_colors)[1:length(pcc_obj_list)], names(pcc_obj_list)),
     labels = setNames(
