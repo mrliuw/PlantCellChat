@@ -73,12 +73,14 @@ PlantCellChat/
 ├── figures/                # Workflow figures  
 └── README.md               # Documentation  
 
-🌐 Webserver for PlantCellChat
+🌐 Webserver for PlantCellChat  
+
 To make PlantCellChat accessible to a wider audience without requiring R installation,
 we have also developed an interactive webserver, available at:
 👉 https://bioinformatics.fafu.edu.cn/PlantCellChat/
 
-This webserver allows users to:
+This webserver allows users to:  
+
 Browse ligand–receptor (LR) interaction datasets from five plant species
 Search by species, signaling pathway, and interaction type
 Explore precomputed single-cell and spatial communication networks
