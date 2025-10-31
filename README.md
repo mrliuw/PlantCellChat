@@ -55,7 +55,8 @@ CompareSignalCommunStrength(pcc_obj = pccob,
 
 For a full tutorial, see vignettes/PlantCellChat_Tutorial.Rmd.
 
-📊 Key Functions Summary
+📊 Key Functions Summary  
+
 Function	Description
 CreatePlantCellChat()	Create analysis object  
 ExtractSignalingData()	Extract signaling-related genes  
