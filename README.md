@@ -65,6 +65,7 @@ CalculateCommunStrength()	Compute CCC strength
 PlottingCommunNetwork()	Visualize cell–cell communication  
 PredictHormoneReceptor()	Predict hormone receptor type via PCC-GCN  
 PlottingSignalContribution()	Visualize receptor contributions in signaling pathways  
+
 🌍 Repository Structure
 PlantCellChat/  
 ├── R/                      # Core functions  
