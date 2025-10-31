@@ -75,10 +75,10 @@ PlantCellChat/
 
 🧠 Citation
 
-Liu W. et al. (2025). PlantCellChat: A computational framework for predicting plant cell–cell communication and hormone receptor networks in plants. Manuscript in preparation.
+Liu W. and Zhu X. et al. (2025). PlantCellChat: A computational framework for predicting plant cell–cell communication and hormone receptor networks in plants. Manuscript in preparation.
 
 📨 Contact
 
-📧 weilau@fafu.edu.cn
+📧 jdluttzxr@gmail.com/weilau@fafu.edu.cn
 
 GitHub: Jdlutt/PlantCellChat
