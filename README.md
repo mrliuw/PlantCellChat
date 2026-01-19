@@ -83,13 +83,13 @@ we have also developed an interactive webserver, available at:
 
 This webserver allows users to:  
 
-Browse ligand–receptor (LR) interaction datasets from five plant species
-Search by species, signaling pathway, and interaction type
-Explore precomputed single-cell and spatial communication networks
-Download LR-pair data tables for custom analyses
-View documentation and workflow summaries online
-💡 The web interface is implemented using R Shiny, with the same analytical core as the PlantCellChat R package.
-Researchers can either run PlantCellChat locally in R or explore key results directly via the webserver.
+Browse ligand–receptor (LR) interaction datasets from five plant species  
+Search by species, signaling pathway, and interaction type  
+Explore precomputed single-cell and spatial communication networks  
+Download LR-pair data tables for custom analyses  
+View documentation and workflow summaries online  
+💡 The web interface is implemented using R Shiny, with the same analytical core as the PlantCellChat R package.  
+Researchers can either run PlantCellChat locally in R or explore key results directly via the webserver.  
 
 🧠 Citation
 Liu W. and Zhu X. et al. (2025). PlantCellChat: A computational framework for predicting plant cell–cell communication and hormone receptor networks in plants. Manuscript in preparation.
