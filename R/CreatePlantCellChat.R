@@ -71,66 +71,115 @@ CreatePlantCellChat <- function(object,
                                 input.ident = NULL,
                                 assay = NULL,
                                 spatial.coord = NULL) {
+  
+  ## -------------------------------
+  ## 1. Matrix input
+  ## -------------------------------
   if (inherits(x = object, what = c("matrix", "Matrix", "dgCMatrix"))) {
-    message("Create a PlantCellChat object from a data matrix.",'\n')
+    message("Create a PlantCellChat object from a data matrix.\n")
     data <- object
   }
-
+  
+  ## -------------------------------
+  ## 2. Seurat input
+  ## -------------------------------
   if (is(object, "Seurat")) {
+    
     .error_if_no_Seurat()
+    
     if (is.null(spatial.coord)) {
       message("Creating a PlantCellChat object from a Seurat object.\n")
     } else {
       message("Creating a PlantCellChat object from a Seurat object based on the spatial coordinates.\n")
     }
-
+    
+    ## assay
     if (is.null(assay)) {
-      assay = Seurat::DefaultAssay(object)
-      message(paste0("The default assay `",assay,"` is used in the data slot.\n"))
+      assay <- Seurat::DefaultAssay(object)
+      message("The default assay `", assay, "` is used in the data layer.\n")
     }
-
+    
     if (assay == "integrated") {
-      stop("The data in the `integrated` assay is not suitable for PlantCellChat analysis! Please use the 'RNA' or 'SCT' assay!")
+      stop("The data in the `integrated` assay is not suitable for PlantCellChat analysis! ",
+           "Please use the 'RNA' or 'SCT' assay!")
     }
-
-    data <- Seurat::GetAssayData(object, assay = assay, slot = "data")
-
+    
+    ## -------------------------------
+    ## Seurat v4 / v5 compatibility
+    ## -------------------------------
+    is_v5 <- packageVersion("SeuratObject") >= "5.0.0"
+    
+    if (is_v5) {
+      # Seurat v5: use layer
+      data <- Seurat::GetAssayData(
+        object = object,
+        assay  = assay,
+        layer  = "data"
+      )
+    } else {
+      # Seurat v4: use slot
+      data <- Seurat::GetAssayData(
+        object = object,
+        assay  = assay,
+        slot   = "data"
+      )
+    }
+    
+    ## data sanity check
     if (min(data) < 0) {
       stop("The data matrix contains negative values.")
     }
-
+    
+    ## meta
     if (is.null(meta)) {
       message("The `meta.data` slot in the Seurat object is used as cell meta information.\n")
       meta <- object@meta.data
     }
-
+    
     meta$ident <- Seurat::Idents(object)
+    
     if (is.null(input.ident)) {
       input.ident <- "ident"
     }
   }
-
+  
+  ## -------------------------------
+  ## 3. Meta handling
+  ## -------------------------------
   if (!is.null(meta)) {
+    
     if (inherits(x = meta, what = c("matrix", "Matrix"))) {
-      meta <- as.data.frame(x = meta)
+      meta <- as.data.frame(meta)
     }
+    
     if (!is.data.frame(meta)) {
       stop("The input `meta` should be a data frame.")
     }
+    
     if (!identical(rownames(meta), colnames(data))) {
-      message("The cell barcodes in `meta` are ", head(rownames(meta)),".\n")
-      warning("The cell barcodes in `meta` are different from those in the used data matrix. We now simply assign the colnames in the data matrix to the rownames of 'meta'!\n")
+      warning("The cell barcodes in `meta` do not match expression matrix. ",
+              "Resetting rownames of `meta` to match data.\n")
       rownames(meta) <- colnames(data)
     }
+    
   } else {
     meta <- data.frame(meta)
   }
-
-  pcc_obj <- methods::new(Class = "PlantCellChat",
-                             data = data,
-                             meta = meta)
-
+  
+  ## -------------------------------
+  ## 4. Create PlantCellChat object
+  ## -------------------------------
+  pcc_obj <- methods::new(
+    Class = "PlantCellChat",
+    data  = data,
+    meta  = meta
+  )
+  
+  ## -------------------------------
+  ## 5. Spatial coordinates (optional)
+  ## -------------------------------
   if (!is.null(spatial.coord)) {
+    
     if (is.matrix(spatial.coord)) {
       pcc_obj@spatial$cell.embeddings <- spatial.coord
     } else if (is.data.frame(spatial.coord)) {
@@ -139,15 +188,36 @@ CreatePlantCellChat <- function(object,
       stop("The `spatial.coord` must be either a matrix or a data frame.")
     }
   }
-
-  if (!is.null(meta) & nrow(meta) > 0) {
+  
+  ## -------------------------------
+  ## 6. Set cell identity
+  ## -------------------------------
+  if (!is.null(meta) && nrow(meta) > 0) {
+    
     if (!(input.ident %in% colnames(meta))) {
-      stop("The `input.ident` is not a column name in the `meta`, which will be used for cell grouping.")
+      stop("The `input.ident` is not a column name in the `meta`, ",
+           "which will be used for cell grouping.")
     }
-    suppressMessages(pcc_obj <- SetPccIdent(pcc_obj,input.ident))
-    message("The cell groups used for PlantCellChat analysis are:\n",paste(levels(pcc_obj@idents), collapse = ","),'\n')
+    
+    suppressMessages(
+      pcc_obj <- SetPccIdent(pcc_obj, input.ident)
+    )
+    
+    message(
+      "The cell groups used for PlantCellChat analysis are:\n",
+      paste(levels(pcc_obj@idents), collapse = ","),
+      "\n"
+    )
   }
-
-  message("------------The PlantCellChat Object has been successfully created.------------",Sys.time())
+  
+  ## -------------------------------
+  ## 7. Done
+  ## -------------------------------
+  message(
+    "------------The PlantCellChat Object has been successfully created.------------ ",
+    Sys.time()
+  )
+  
   return(pcc_obj)
 }
+
