@@ -278,45 +278,45 @@ CalculateSignalingStrength.Sub <- function(pcc_obj, Kh = 0.5, n = 1, Ls = 1) {
       exp <- pcc_obj@data.average
     }
   }
-
+  
   # Ligand
   # exp_L <- ExtractExpMatrix(pcc_obj,comps = "Ligand",interaction.type = "sri",na.replace = T)
-
+  
   # Receptor
   exp_single_R <- ExtractExpMatrix(pcc_obj,comps = "Receptor",interaction.type = "sri",na.replace = T)
-
+  
   exp_complex1 <- ExtractExpMatrix(pcc_obj,comps = "Complex1",interaction.type = "sri")
   exp_complex2 <- ExtractExpMatrix(pcc_obj,comps = "Complex2",interaction.type = "sri")
   sub1unit <- exp_single_R * correct(exp_complex1)
   sub2unit <- (exp_single_R * exp_complex1 * correct(exp_complex2))^(1/2)
   sub3unit <- (exp_single_R * exp_complex1 * exp_complex2)^(1/3)
-
+  
   exp_coI <- ExtractExpMatrix(pcc_obj,comps = "CoAreceptor",interaction.type = "sri",zero.replace = T)
   exp_coA <- ExtractExpMatrix(pcc_obj,comps = "CoIreceptor",interaction.type = "sri",zero.replace = T)
-
+  
   exp_R <- MergeExpMatrix(matrix_list = list(sub1unit,sub2unit,sub3unit)) * (1 + exp_coA) * (1/(1 + exp_coI))
-
+  
   # Agonist
   exp_ag <- ExtractExpMatrix(pcc_obj,comps = "Agonist",interaction.type = "sri",zero.replace = T)
   p_ag <- 1 + (exp_ag^n/(Kh^n + exp_ag^n))
-
+  
   # Antagonist
   exp_anta <- ExtractExpMatrix(pcc_obj,comps = "Antagonist",interaction.type = "sri",zero.replace = T)
   p_anta <- Kh^n / (Kh^n + exp_anta^n)
-
+  
   # calculate communication strength
   nLR <- nrow(interaction)
   numCluster <- nlevels(pcc_obj@idents)
   prob <- array(NA,dim = c(1,numCluster,nLR))
-
+  
   for (i in 1:nLR){
     prob[,,i] <- (Ls * t(exp_R[i,]))^n/(Kh^n + (Ls * t(exp_R[i,]))^n) * t(p_ag[i,]) * t(p_anta[i,])
   }
-
+  
   dimnames(prob)[[2]] <- levels(PccIdents(pcc_obj))
   dimnames(prob)[[3]] <- rownames(interaction)
   pcc_obj@netSignal$prob <- prob
-
+  
   return(pcc_obj)
 }
 
@@ -341,7 +341,7 @@ CalculateSignalingStrength.Sub <- function(pcc_obj, Kh = 0.5, n = 1, Ls = 1) {
 #'
 #' @export
 #'
-CalculateSignalingStrength <- function(pcc_obj, Kh = 0.5, n = 1, exp.methods = "average", num.permutations = 100, seed = 123) {
+CalculateSignalingStrength <- function(pcc_obj, Kh = 0.5, n = 1, exp.methods = "average", num.permutations = 100, seed = 123, Ls = 1) {
   if (is.null(pcc_obj@lrpairs$lr.signaling)) {
     stop("Over-expressed interaction were not extracted, please run the function 'ExtractOverExpressedInteractions' first.")
   } else {
@@ -353,13 +353,13 @@ CalculateSignalingStrength <- function(pcc_obj, Kh = 0.5, n = 1, exp.methods = "
       exp <- pcc_obj@data.average
     }
   }
-
-  pcc_obj <- CalculateSignalingStrength.Sub(pcc_obj, Kh, n)
-
+  
+  pcc_obj <- CalculateSignalingStrength.Sub(pcc_obj, Kh, n, Ls)
+  
   p_list_signal <- list()
-
+  
   set.seed(seed)
-
+  
   pb <- progress::progress_bar$new(
     format = "(:spin) [:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
     total = num.permutations,
@@ -369,25 +369,25 @@ CalculateSignalingStrength <- function(pcc_obj, Kh = 0.5, n = 1, exp.methods = "
     clear = FALSE,
     width = 100
   )
-
+  
   for (i in 1:num.permutations) {
     pb$tick()
-
+    
     original_label <- PccIdents(pcc_obj)
     resample_label <- sample(original_label, size = length(original_label), replace = FALSE)
     suppressMessages(pcc_obj_resample <- SetPccIdent(pcc_obj, resample_label))
     suppressMessages(pcc_obj_resample <- CalculateAvgExp(pcc_obj_resample,methods = exp.methods))
-    suppressMessages(pcc_obj_resample <- CalculateSignalingStrength.Sub(pcc_obj_resample, Kh, n))
-
+    suppressMessages(pcc_obj_resample <- CalculateSignalingStrength.Sub(pcc_obj_resample, Kh, n, Ls))
+    
     p_list_signal[[i]] <- pcc_obj_resample@netSignal$prob < pcc_obj@netSignal$prob
     p_list_signal[[i]][p_list_signal[[i]] == TRUE] <- 1
   }
-
+  
   pcc_obj@netSignal$pvalue <- Reduce(`+`, p_list_signal) / num.permutations
-
+  
   prob <- pcc_obj@netSignal$prob
   pvalue <- pcc_obj@netSignal$pvalue
-
+  
   df <- data.frame()
   for (i in 1:dim(prob)[[3]]) {
     source_name <- strsplit(dimnames(prob)[[3]][i], "_")[[1]][1]
@@ -401,10 +401,10 @@ CalculateSignalingStrength <- function(pcc_obj, Kh = 0.5, n = 1, exp.methods = "
       dplyr::select(Interaction_name, Signal, Source, Target, Prob, Pvalue)
     df <- dplyr::bind_rows(df, df0)
   }
-
+  
   pcc_obj@netSignal$df <- df
-
+  
   message("The signaling strength has been calculated and the result saved in the `netSignal` slot.")
-
+  
   return(pcc_obj)
 }
